@@ -25,7 +25,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer() server: Server;
 
 	constructor(
-		private configService: ConfigService,
 		private chatService: ChatService,
 		private jwtService: JwtService,
 	) {}
@@ -185,11 +184,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	/******************************* ONLY FOR DEV **********************************/
 	@SubscribeMessage('resetRedisForDevelopment')
 	async handleResetRedis(@ConnectedSocket() client: AuthenticatedSocket) {
+		/*
 		const isDevelopment = this.configService.get('NODE_ENV') === 'dev';
 		if (!isDevelopment) {
 			client.emit('redisStatus', { success: false, message: 'This operation is only allowed in development environment' });
 			return;
 		}
+		*/
 		try {
 			await this.chatService.resetRedis();
 			console.log('Redis data reset completed');

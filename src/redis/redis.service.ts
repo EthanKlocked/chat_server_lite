@@ -8,8 +8,8 @@ export class RedisService {
 
     constructor(private readonly configService: ConfigService) {
         this.redisClient = new Redis({
-            host: this.configService.get("REDIS_HOST") || 'localhost',
-            port: configService.get('REDIS_PORT') || 6379,
+            host: configService.get("REDIS_HOST_CUSTOM") || 'localhost',
+            port: configService.get('REDIS_PORT_CUSTOM') || 6379,
         });
     }
 
@@ -89,4 +89,12 @@ export class RedisService {
     async flushAll(): Promise<void> {
         await this.redisClient.flushall();
     }
+
+    async deleteKeysByPattern(pattern: string): Promise<number> {
+        const keys = await this.redisClient.keys(pattern);
+        if (keys.length > 0) {
+          return await this.redisClient.del(...keys);
+        }
+        return 0;
+    }    
 }

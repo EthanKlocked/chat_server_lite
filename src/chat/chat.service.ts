@@ -110,7 +110,9 @@ export class ChatService {
     }
 
     // Extra reset
-    resetRedis(): Promise<void> {
-        return this.redisService.flushAll();
+    async resetRedis(patterns: string[] = ["user:*", "chat:*"]): Promise<void> {
+        patterns.forEach(async(p) => {
+            await this.redisService.deleteKeysByPattern(p);
+        })
     }    
 }

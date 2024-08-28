@@ -11,7 +11,7 @@ import { RedisModule } from '@src/redis/redis.module';
 		ConfigModule.forRoot({
 			cache: true,
 			isGlobal: true,
-			envFilePath: `.env.${process.env.NODE_ENV}`,
+			envFilePath: `.env.${process.env.NODE_ENV}`
 		}),
 		/********* CUSTOM MODULES *********/
 		ChatModule,
