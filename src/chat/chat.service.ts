@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { RedisService } from '@src/redis/redis.service';
 import { ChatMessage } from '@src/chat/chat.interface';
 import { v4 as uuidv4 } from 'uuid';
+import { MessageType } from '@src/chat/dto/chat.send.dto';
 
 @Injectable()
 export class ChatService {
@@ -28,10 +29,11 @@ export class ChatService {
         return roomMembers.includes(userId);
     }
 
-    async sendMessage(roomId: string, senderId: string, content: string, activeUsers: string[]): Promise<ChatMessage> {
+    async sendMessage(roomId: string, senderId: string, type: MessageType, content: string[], activeUsers: string[]): Promise<ChatMessage> {
         const message: ChatMessage = {
             id: uuidv4(),
             senderId,
+            type,
             content,
             timestamp: new Date(),
             readBy: activeUsers,

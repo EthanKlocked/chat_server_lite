@@ -1,99 +1,127 @@
-# NestJS Redis Chat Server
+```markdown
+# 채팅 서버 프로젝트
 
-A real-time chat server built with NestJS, using Redis as a data store and supporting multi-device connections per user.
+이 프로젝트는 NestJS를 사용하여 구현된 실시간 채팅 서버입니다.
 
-## Features
+## 기능
 
-- Real-time messaging using WebSockets (Socket.IO)
-- Redis-based data storage for fast, in-memory operations
-- JWT authentication
-- Multi-device support for each user
-- Group and private chat functionality
-- Message read status tracking
-- Flexible token authentication (works with any token format given the correct secret key)
+- 실시간 메시지 전송
+- 채팅방 생성 및 참여
+- 텍스트 및 이미지 메시지 지원
+- 메시지 읽음 상태 관리
 
-## Prerequisites
+## 설치 및 실행
 
-- Node.js (v14+ recommended)
-- Redis server
-- npm or yarn
+```bash
+npm install
+npm run start:dev
+```
 
-## Installation
+## WebSocket 이벤트
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/ethanklocked/chat_server_lite.git
-   cd chat_server_lite
-   ```
+### 연결
+WebSocket 엔드포인트: `ws://your-domain.com/chat`
 
-2. Install dependencies:
-   ```
-   npm install
-   ```
+연결 시 헤더에 토큰을 포함해야 합니다:
+```
+{
+  "token": "your-auth-token"
+}
+```
 
-3. Set up environment variables:
-   - Copy `.env.example` as `.env.dev` or `.env.prod`
-   - Fill in the required variables (Redis connection, JWT secret, etc.)
+### 이벤트
 
-## Usage
+#### 클라이언트 -> 서버
 
-1. Start the server:
-   ```
-   npm run start
-   ```
+1. 채팅방 초기화
+```typescript
+socket.emit('initializeChat', { participants: string[] });
+```
 
-2. For development with watch mode:
-   ```
-   npm run start:dev
-   ```
+2. 채팅방 입장
+```typescript
+socket.emit('enterChat', { roomId: string });
+```
 
-## API Documentation
+3. 메시지 전송
+```typescript
+socket.emit('sendMessage', {
+  roomId: string,
+  type: 'text' | 'image',
+  content: string[]
+});
+```
 
-### WebSocket Events
+예시:
+- 텍스트 메시지: `{ roomId: "room1", type: "text", content: ["Hello, World!"] }`
+- 이미지 메시지: `{ roomId: "room1", type: "image", content: ["http://example.com/image1.jpg", "http://example.com/image2.jpg"] }`
 
-#### Client to Server:
+4. 메시지 읽음 표시
+```typescript
+socket.emit('markAsRead', { roomId: string, messageId: string });
+```
 
-- `initializeChat`: Create a new chat room
-  - Payload: `{ participants: string[] }`
+#### 서버 -> 클라이언트
 
-- `getChatList`: Get the list of chats for the current user
+1. 상태 업데이트
+```typescript
+socket.on('status', (message: string) => {
+  console.log(message);
+});
+```
 
-- `enterChat`: Enter a specific chat room
-  - Payload: `{ roomId: string }`
+2. 채팅 목록 수신
+```typescript
+socket.on('chatList', (chatList: any[]) => {
+  console.log(chatList);
+});
+```
 
-- `leaveChat`: Leave the current chat room
+3. 채팅 히스토리 수신
+```typescript
+socket.on('chatHistory', (messages: any[]) => {
+  console.log(messages);
+});
+```
 
-- `sendMessage`: Send a message in the current chat room
-  - Payload: `{ roomId: string, content: string }`
+4. 새 메시지 수신
+```typescript
+socket.on('newMessage', (message: any) => {
+  console.log(message);
+});
+```
 
-- `markAsRead`: Mark a message as read
-  - Payload: `{ roomId: string, messageId: string }`
+## 에러 처리
 
-#### Server to Client:
+서버는 에러 발생 시 다음과 같은 이벤트를 발생시킵니다:
 
-- `status`: Various status updates
-- `error`: Error messages
-- `chatList`: Updated chat list
-- `chatHistory`: Chat history when entering a room
-- `newMessage`: New message in a chat room
+```typescript
+socket.on('error', (error: any) => {
+  console.error(error);
+});
+```
 
-## Authentication
+## 데이터 구조
 
-The server uses JWT for authentication. Include the token in the `token` header when establishing the WebSocket connection.
+### 메시지 (ChatMessage)
 
-## Multi-Device Support
+```typescript
+interface ChatMessage {
+  id: string;
+  senderId: string;
+  type: 'text' | 'image';
+  content: string[];
+  timestamp: Date;
+  readBy: string[];
+}
+```
 
-Users can connect from multiple devices simultaneously. Each device will receive updates and can interact independently.
+## 주의사항
 
-## Development
+- 모든 WebSocket 통신은 인증된 사용자만 가능합니다.
+- 메시지 전송 시 항상 `type`과 `content`를 올바르게 지정해야 합니다.
+- 이미지 메시지의 경우, `content` 배열에 이미지 URL을 포함해야 합니다.
 
-### Reset Redis (Development Only)
+## 라이선스
 
-To reset Redis data during development:
-
-1. Ensure the server is running in development mode (`NODE_ENV=dev`)
-2. Send a `resetRedisForDevelopment` event to the server
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+이 프로젝트는 [MIT 라이선스](LICENSE)

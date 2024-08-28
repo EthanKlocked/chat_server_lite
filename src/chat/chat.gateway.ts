@@ -7,12 +7,18 @@ import {
 	OnGatewayConnection,
 	OnGatewayDisconnect,
 } from '@nestjs/websockets';
+import { UsePipes, ValidationPipe, UseFilters } from '@nestjs/common';
 import { Server } from 'socket.io';
 import { ChatService } from '@src/chat/chat.service';
 import { AuthenticatedSocket } from '@src/chat/chat.interface';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { InitDto } from '@src/chat/dto/chat.init.dto';
+import { MarkDto } from '@src/chat/dto/chat.mark.dto';
+import { EnterDto } from '@src/chat/dto/chat.enter.dto';
+import { SendDto } from '@src/chat/dto/chat.send.dto';
 import { TokenExpiredError } from 'jsonwebtoken';
+import { ChatExceptionFilter } from '@src/chat/filters/chat.exception.filter';
+
 
 @WebSocketGateway({
 	cors: {
@@ -21,6 +27,9 @@ import { TokenExpiredError } from 'jsonwebtoken';
 	},	
 })
 
+
+@UsePipes(new ValidationPipe({ transform: true }))
+@UseFilters(new ChatExceptionFilter())
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer() server: Server;
 
@@ -55,13 +64,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	handleDisconnect(client: AuthenticatedSocket) {
 		const userId = client.user?.id
-		client.emit('status', 'disconnected');
+		client.emit('status', `${userId} disconnected`);
 	}
 
 	@SubscribeMessage('initializeChat')
 	async handleInitializeChat(
 		@ConnectedSocket() client: AuthenticatedSocket,
-		@MessageBody() data: { participants: string[] }
+		@MessageBody() data: InitDto
 	) {
 		//setting
 		const userId = client.user.id;
@@ -95,7 +104,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@SubscribeMessage('enterChat')
 	async handleEnterChat(
 		@ConnectedSocket() client: AuthenticatedSocket,
-		@MessageBody() data: { roomId: string }
+		@MessageBody() data: EnterDto
 	) {
 		//user check
 		const userId = client.user.id;
@@ -136,10 +145,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@SubscribeMessage('sendMessage')
 	async handleSendMessage(
 		@ConnectedSocket() client: AuthenticatedSocket,
-		@MessageBody() data: { roomId: string, content: string }
+		@MessageBody() data: SendDto
 	) {
 		const userId = client.user.id;
-		const { roomId, content } = data
+		const { roomId, type, content } = data;
 		const isAvailable = await this.chatService.isChatMember(userId, roomId);
 		if (isAvailable){
 			//check live sockets
@@ -156,7 +165,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 				}
 			}));
 			//send message
-			const message = await this.chatService.sendMessage(roomId, userId, content, Array.from(activeUsersSet));
+			const message = await this.chatService.sendMessage(roomId, userId, type, content, Array.from(activeUsersSet));
 			this.server.to(roomId).emit('newMessage', message);
 			//update chatlist for all members for all devices
 			members.forEach(async(i) => {
@@ -172,7 +181,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@SubscribeMessage('markAsRead')
 	async handleMarkAsRead(
 		@ConnectedSocket() client: AuthenticatedSocket,
-		@MessageBody() data: { roomId: string, messageId: string }
+		@MessageBody() data: MarkDto
 	) {
 		const userId = client.user.id;
 		const { roomId, messageId } = data
