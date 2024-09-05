@@ -121,7 +121,3 @@ interface ChatMessage {
 - 모든 WebSocket 통신은 인증된 사용자만 가능합니다.
 - 메시지 전송 시 항상 `type`과 `content`를 올바르게 지정해야 합니다.
 - 이미지 메시지의 경우, `content` 배열에 이미지 URL을 포함해야 합니다.
-
-## 라이선스
-
-이 프로젝트는 [MIT 라이선스](LICENSE)
