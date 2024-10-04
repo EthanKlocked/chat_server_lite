@@ -29,6 +29,10 @@ export class RedisService {
 		return this.redisClient.sismember(key, member);
 	}
 
+	async rpush(key: string, ...values: string[]): Promise<number> {
+		return this.redisClient.rpush(key, ...values);
+	}
+
 	async lpush(key: string, ...values: string[]): Promise<number> {
 		return this.redisClient.lpush(key, ...values);
 	}

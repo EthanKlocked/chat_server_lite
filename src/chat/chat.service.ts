@@ -69,8 +69,8 @@ export class ChatService {
 			timestamp: new Date(),
 			readBy: activeUsers
 		};
-		await this.redisService.lpush(`chat:${roomId}:messages`, JSON.stringify(message));
-		await this.redisService.ltrim(`chat:${roomId}:messages`, 0, 99);
+		await this.redisService.rpush(`chat:${roomId}:messages`, JSON.stringify(message));
+		await this.redisService.ltrim(`chat:${roomId}:messages`, -100, -1);
 		return message;
 	}
 
@@ -79,7 +79,8 @@ export class ChatService {
 		return Promise.all(
 			userChats.map(async roomId => {
 				const roomMembers = await this.getParticipants(roomId);
-				const lastMessage = await this.redisService.lindex(`chat:${roomId}:messages`, 0);
+				//const lastMessage = await this.redisService.lindex(`chat:${roomId}:messages`, 0);
+				const lastMessage = await this.redisService.lindex(`chat:${roomId}:messages`, -1);
 				const unreadCnt = await this.getUnreadMessageCount(roomId, userId);
 				//member cnt
 				const isGroupChat = roomMembers.length > 2;
@@ -108,7 +109,9 @@ export class ChatService {
 	}
 
 	async getMessages(roomId: string, limit: number = 50): Promise<ChatMessage[]> {
-		const messages = await this.redisService.lrange(`chat:${roomId}:messages`, 0, limit - 1);
+		//const messages = await this.redisService.lrange(`chat:${roomId}:messages`, 0, limit - 1);
+		//return messages.map(msg => JSON.parse(msg));
+		const messages = await this.redisService.lrange(`chat:${roomId}:messages`, -limit, -1);
 		return messages.map(msg => JSON.parse(msg));
 	}
 
@@ -121,7 +124,7 @@ export class ChatService {
 		const messages = await this.getMessages(roomId);
 		const pipeline = this.redisService.pipeline();
 		pipeline.del(`chat:${roomId}:messages`);
-		messages.reverse().forEach(msg => {
+		messages.forEach(msg => {
 			let updatedMsg = msg;
 			if ((!messageId || msg.id === messageId) && !msg.readBy.includes(userId)) {
 				updatedMsg = { ...msg, readBy: [...msg.readBy, userId] };
