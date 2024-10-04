@@ -5,7 +5,7 @@ import {
 	ConnectedSocket,
 	WebSocketServer,
 	OnGatewayConnection,
-	OnGatewayDisconnect,
+	OnGatewayDisconnect
 } from '@nestjs/websockets';
 import { UsePipes, ValidationPipe, UseFilters } from '@nestjs/common';
 import { Server } from 'socket.io';
@@ -19,15 +19,12 @@ import { SendDto } from '@src/chat/dto/chat.send.dto';
 import { TokenExpiredError } from 'jsonwebtoken';
 import { ChatExceptionFilter } from '@src/chat/filters/chat.exception.filter';
 
-
 @WebSocketGateway({
 	cors: {
 		origin: '*', // Need to be set as client domain in service level
-		pingTimeout: 6000000, //100 minutes
-	},	
+		pingTimeout: 6000000 //100 minutes
+	}
 })
-
-
 @UsePipes(new ValidationPipe({ transform: true }))
 @UseFilters(new ChatExceptionFilter())
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -35,7 +32,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	constructor(
 		private chatService: ChatService,
-		private jwtService: JwtService,
+		private jwtService: JwtService
 	) {}
 
 	async handleConnection(client: AuthenticatedSocket) {
@@ -45,7 +42,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			const token = Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader;
 			const payload = await this.jwtService.verifyAsync(token);
 			client.user = payload;
-			const userId = payload.id
+			const userId = payload.id;
 			//join to server
 			await client.join(`user:${userId}`);
 			client.emit('status', `user:${userId} connected`);
@@ -54,7 +51,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			const filteredChat = chatList.filter(chat => chat.available);
 			for (const chat of filteredChat) await client.join(chat.roomId);
 			client.emit('status', 'chat list updated');
-			client.emit('chatList', filteredChat)
+			client.emit('chatList', filteredChat);
 		} catch (error) {
 			if (error instanceof TokenExpiredError) client.emit('error', 'token expired');
 			client.emit('error', 'connection failed');
@@ -63,7 +60,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	handleDisconnect(client: AuthenticatedSocket) {
-		const userId = client.user?.id
+		const userId = client.user?.id;
 		client.emit('status', `${userId} disconnected`);
 	}
 
@@ -74,22 +71,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	) {
 		//setting
 		const userId = client.user.id;
-        const { participants } = data;
-        const memberSet = Array.from(new Set([userId, ...participants]));
+		const { participants } = data;
+		const memberSet = Array.from(new Set([userId, ...participants]));
 		const roomId = await this.chatService.initializeChat(memberSet);
 		//control members (multi devices)
-        await Promise.all(memberSet.map(async (memberId) => {
-			//join all devices
-            const sockets = await this.server.in(`user:${memberId}`).allSockets();
-            const joinPromises = Array.from(sockets).map(socketId =>
-                this.server.sockets.sockets.get(socketId).join(roomId)
-            );
-            await Promise.all(joinPromises);
-			//update chat list
-			const chatList = await this.chatService.getChatList(memberId);
-            const filteredChat = chatList.filter(chat => chat.available);
-            this.server.to(`user:${memberId}`).emit('chatList', filteredChat);
-        }));
+		await Promise.all(
+			memberSet.map(async memberId => {
+				//join all devices
+				const sockets = await this.server.in(`user:${memberId}`).allSockets();
+				const joinPromises = Array.from(sockets).map(socketId =>
+					this.server.sockets.sockets.get(socketId).join(roomId)
+				);
+				await Promise.all(joinPromises);
+				//update chat list
+				const chatList = await this.chatService.getChatList(memberId);
+				const filteredChat = chatList.filter(chat => chat.available);
+				this.server.to(`user:${memberId}`).emit('chatList', filteredChat);
+			})
+		);
 		client.emit('status', `${roomId} initialized`);
 	}
 
@@ -108,39 +107,37 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	) {
 		//user check
 		const userId = client.user.id;
-		const { roomId } = data
+		const { roomId } = data;
 		const isAvailable = await this.chatService.isChatMember(userId, roomId);
 		if (isAvailable) {
 			//mark all messages in chat
 			await this.chatService.markMessageAsRead(roomId, userId);
 			//get chat history for only current device
-			const chatHistory = await this.chatService.getMessages(roomId);			
+			const chatHistory = await this.chatService.getMessages(roomId);
 			client.emit('chatHistory', chatHistory);
 			//chat list update for multi connection
 			const chatList = await this.chatService.getChatList(userId);
-			const filteredChat = chatList.filter(chat => chat.available);			
+			const filteredChat = chatList.filter(chat => chat.available);
 			this.server.to(`user:${userId}`).emit('chatList', filteredChat);
 			//save the socket status entered
 			const rooms = Array.from(client.rooms);
 			const currentRooms = rooms.filter(room => room.startsWith('current:'));
-			currentRooms.forEach(room => client.leave(room));			
+			currentRooms.forEach(room => client.leave(room));
 			await client.join(`current:${roomId}`);
 			client.emit('status', `${roomId} entered`);
 		} else {
 			client.emit('error', { message: 'You do not have permission to join this chat.' });
-			return null
+			return null;
 		}
-	}		
+	}
 
 	@SubscribeMessage('leaveChat')
-	async handleLeaveChat(
-		@ConnectedSocket() client: AuthenticatedSocket
-	) {
+	async handleLeaveChat(@ConnectedSocket() client: AuthenticatedSocket) {
 		const rooms = Array.from(client.rooms);
 		const currentRooms = rooms.filter(room => room.startsWith('current:'));
 		currentRooms.forEach(room => client.leave(room));
 		client.emit('status', `leaved from all rooms`);
-	}		
+	}
 
 	@SubscribeMessage('sendMessage')
 	async handleSendMessage(
@@ -150,30 +147,41 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		const userId = client.user.id;
 		const { roomId, type, content } = data;
 		const isAvailable = await this.chatService.isChatMember(userId, roomId);
-		if (isAvailable){
+		if (isAvailable) {
 			//check live sockets
 			const members = await this.chatService.getParticipants(roomId);
 			const activeUsersSet = new Set<string>();
-			await Promise.all(members.map(async (memberId) => {
-				const sockets = await this.server.in(`user:${memberId}`).allSockets();
-				for (const socketId of sockets) {
-					const socket = this.server.sockets.sockets.get(socketId);
-					if (socket && socket.rooms.has(`current:${roomId}`)) {
-						activeUsersSet.add(memberId);
-						break; 
+			await Promise.all(
+				members.map(async memberId => {
+					const sockets = await this.server.in(`user:${memberId}`).allSockets();
+					for (const socketId of sockets) {
+						const socket = this.server.sockets.sockets.get(socketId);
+						if (socket && socket.rooms.has(`current:${roomId}`)) {
+							activeUsersSet.add(memberId);
+							break;
+						}
 					}
-				}
-			}));
+				})
+			);
 			//send message
-			const message = await this.chatService.sendMessage(roomId, userId, type, content, Array.from(activeUsersSet));
-			this.server.to(roomId).emit('newMessage', message);
+			const message = await this.chatService.sendMessage(
+				roomId,
+				userId,
+				type,
+				content,
+				Array.from(activeUsersSet)
+			);
+			/*this.server.to(roomId).emit('newMessage', message);*/ // CASE 1 : update a message every participants
+			this.server.to(`current:${roomId}`).emit('newMessage', message); // CASE 2 : update a message participants who is entered
+			const chatHistory = await this.chatService.getMessages(roomId); // CASE 3 : update chat history participants who is entered
+			this.server.to(`current:${roomId}`).emit('chatHistory', chatHistory);
 			//update chatlist for all members for all devices
-			members.forEach(async(i) => {
+			members.forEach(async i => {
 				const chatList = await this.chatService.getChatList(i);
-				const filteredChat = chatList.filter(chat => chat.available);			
+				const filteredChat = chatList.filter(chat => chat.available);
 				this.server.to(`user:${i}`).emit('chatList', filteredChat);
-			})
-		}else {
+			});
+		} else {
 			client.emit('error', { message: 'You do not have permission to join this chat.' });
 		}
 	}
@@ -184,10 +192,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 		@MessageBody() data: MarkDto
 	) {
 		const userId = client.user.id;
-		const { roomId, messageId } = data
+		const { roomId, messageId } = data;
 		await this.chatService.markMessageAsRead(roomId, userId, messageId);
 		this.server.to(client.id).emit('status', { messageId: messageId });
-		client.emit('status', `${messageId} marked`)
+		client.emit('status', `${messageId} marked`);
 	}
 
 	/******************************* ONLY FOR DEV **********************************/

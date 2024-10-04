@@ -6,13 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { jwtConfig } from '@src/config/jwt.config';
 
 @Module({
-	imports: [
-		JwtModule.registerAsync(jwtConfig),
-		RedisModule
-	],
-	providers: [
-		ChatService, 
-		ChatGateway
-	],
+	imports: [JwtModule.registerAsync(jwtConfig), RedisModule],
+	providers: [ChatService, ChatGateway]
 })
 export class ChatModule {}

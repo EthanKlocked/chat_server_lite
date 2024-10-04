@@ -15,9 +15,9 @@ import { RedisModule } from '@src/redis/redis.module';
 		}),
 		/********* CUSTOM MODULES *********/
 		ChatModule,
-		RedisModule,
+		RedisModule
 	],
 	controllers: [AppController],
-	providers: [AppService],
+	providers: [AppService]
 })
 export class AppModule {}
