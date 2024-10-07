@@ -21,9 +21,12 @@ import { ChatExceptionFilter } from '@src/chat/filters/chat.exception.filter';
 
 @WebSocketGateway({
 	cors: {
-		origin: '*', // Need to be set as client domain in service level
-		pingTimeout: 6000000 //100 minutes
-	}
+		origin: '*' // Need to be set as client domain in service level
+	},
+	pingTimeout: 6000000, // 100 minutes
+	pingInterval: 25000, // 25 secs
+	maxHttpBufferSize: 5e6, // 5MB
+	transports: ['websocket', 'polling'] //polling for legacy
 })
 @UsePipes(new ValidationPipe({ transform: true }))
 @UseFilters(new ChatExceptionFilter())

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { RedisService } from '@src/redis/redis.service';
 import { ChatMessage } from '@src/chat/chat.interface';
 import { v4 as uuidv4 } from 'uuid';
@@ -61,6 +61,7 @@ export class ChatService {
 		content: string[],
 		activeUsers: string[]
 	): Promise<ChatMessage> {
+		if (type === MessageType.IMAGE) this.validateImageContent(content);
 		const message: ChatMessage = {
 			id: uuidv4(),
 			senderId,
@@ -74,9 +75,32 @@ export class ChatService {
 		return message;
 	}
 
+	private validateImageContent(content: string[]): void {
+		const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+		const allowedFormats = ['png', 'jpg', 'jpeg', 'gif'];
+		content.forEach((item, index) => {
+			const matches = item.match(/^data:image\/([a-z]+);base64,(.+)$/);
+			if (!matches) {
+				throw new BadRequestException(`Invalid image format for image ${index + 1}`);
+			}
+			const [, format, base64Data] = matches;
+			if (!allowedFormats.includes(format)) {
+				throw new BadRequestException(
+					`Unsupported image format for image ${index + 1}. Allowed formats are: ${allowedFormats.join(', ')}`
+				);
+			}
+			const sizeInBytes = (base64Data.length * 3) / 4;
+			if (sizeInBytes > maxSize) {
+				throw new BadRequestException(
+					`Image ${index + 1} size exceeds the limit of ${maxSize / (1024 * 1024)}MB`
+				);
+			}
+		});
+	}
+
 	async getChatList(userId: string): Promise<any[]> {
 		const userChats = await this.redisService.smembers(`user:${userId}:chats`);
-		return Promise.all(
+		const chatList = await Promise.all(
 			userChats.map(async roomId => {
 				const roomMembers = await this.getParticipants(roomId);
 				//const lastMessage = await this.redisService.lindex(`chat:${roomId}:messages`, 0);
@@ -106,6 +130,12 @@ export class ChatService {
 				return chatInfo;
 			})
 		);
+		chatList.sort((a, b) => {
+			const timestampA = a.lastMessage ? new Date(a.lastMessage.timestamp).getTime() : 0;
+			const timestampB = b.lastMessage ? new Date(b.lastMessage.timestamp).getTime() : 0;
+			return timestampB - timestampA; // Descending order (newest first)
+		});
+		return chatList;
 	}
 
 	async getMessages(roomId: string, limit: number = 50): Promise<ChatMessage[]> {
