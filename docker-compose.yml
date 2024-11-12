@@ -7,8 +7,8 @@ services:
             - '443:443'
         volumes:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-            - certbot_conf:/etc/letsencrypt:rw # named volume 사용
-            - certbot_www:/var/www/certbot:rw # named volume 사용
+            - ./certbot/conf:/etc/letsencrypt:ro
+            - ./certbot/www:/var/www/certbot:ro
         user: root
         command: '/bin/sh -c ''while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'''
         depends_on:
@@ -19,8 +19,8 @@ services:
     certbot:
         image: certbot/certbot
         volumes:
-            - certbot_conf:/etc/letsencrypt # nginx와 동일한 named volume
-            - certbot_www:/var/www/certbot # nginx와 동일한 named volume
+            - ./certbot/conf:/etc/letsencrypt
+            - ./certbot/www:/var/www/certbot
         entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
     socket-server:
@@ -31,7 +31,7 @@ services:
             - '3003'
         depends_on:
             redis:
-                condition: service_healthy # Redis가 완전히 준비될 때까지 대기
+                condition: service_healthy
         networks:
             - app_network
         restart: unless-stopped
@@ -46,15 +46,13 @@ services:
         networks:
             - app_network
         restart: unless-stopped
-        healthcheck: # 헬스체크 추가
+        healthcheck:
             test: ['CMD', 'redis-cli', 'ping']
             interval: 5s
             timeout: 3s
             retries: 5
 
 volumes:
-    certbot_conf: # certbot conf 볼륨 정의
-    certbot_www: # certbot www 볼륨 정의
     redis_data:
 
 networks:
