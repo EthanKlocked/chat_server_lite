@@ -29,14 +29,15 @@ services:
         expose:
             - '3003'
         depends_on:
-            - redis
+            redis:
+                condition: service_healthy # Redis가 완전히 준비될 때까지 대기
         networks:
             - app_network
         restart: unless-stopped
 
     redis:
         image: redis:alpine
-        command: redis-server --requirepass ${REDIS_PASSWORD}
+        command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
         volumes:
             - redis_data:/data
         expose:
@@ -44,6 +45,11 @@ services:
         networks:
             - app_network
         restart: unless-stopped
+        healthcheck: # 헬스체크 추가
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 5s
+            timeout: 3s
+            retries: 5
 
 volumes:
     certbot_conf: # certbot conf 볼륨 정의
