@@ -95,9 +95,9 @@ impl ChatService {
             .rpush(&format!("chat:{}:messages", room_id), &message_json)
             .await?;
 
-        // Keep only last 100 messages
+        // Keep only last 500 messages
         self.redis
-            .ltrim(&format!("chat:{}:messages", room_id), -100, -1)
+            .ltrim(&format!("chat:{}:messages", room_id), -500, -1)
             .await?;
 
         Ok(message)

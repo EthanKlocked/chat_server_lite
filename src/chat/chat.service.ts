@@ -71,7 +71,7 @@ export class ChatService {
 			readBy: activeUsers
 		};
 		await this.redisService.rpush(`chat:${roomId}:messages`, JSON.stringify(message));
-		await this.redisService.ltrim(`chat:${roomId}:messages`, -100, -1);
+		await this.redisService.ltrim(`chat:${roomId}:messages`, -500, -1);
 		return message;
 	}
 
