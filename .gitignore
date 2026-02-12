@@ -3,6 +3,7 @@
 /node_modules
 /build
 /kube_execute
+**/target
 
 # Logs
 logs

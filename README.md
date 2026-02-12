@@ -1,22 +1,50 @@
-````markdown
 # 채팅 서버 프로젝트
 
-이 프로젝트는 NestJS를 사용하여 구현된 실시간 채팅 서버입니다.
+실시간 채팅 서버입니다. NestJS와 Rust(socketioxide) 두 가지 구현체를 제공합니다.
 
 ## 기능
 
--   실시간 메시지 전송
--   채팅방 생성 및 참여
--   텍스트 및 이미지 메시지 지원
--   메시지 읽음 상태 관리
+- 실시간 메시지 전송
+- 채팅방 생성 및 참여 (1:1, 그룹)
+- 텍스트 및 이미지 메시지 지원
+- 메시지 읽음 상태 관리
 
-## 설치 및 실행
+## 로컬 개발
 
+### NestJS 서버
 ```bash
 npm install
-npm run start:dev
+npm run start:dev  # 포트 3003
 ```
-````
+
+### Rust 서버
+```bash
+cd chat_server_rust
+cargo run  # 포트 3003 (SERVER_PORT 환경변수로 변경 가능)
+```
+
+## Docker 배포
+
+### 환경변수 설정
+`.env.prod` 파일 필요:
+```
+APP_NAME = soap_chat
+JWT_SECRET = your_jwt_secret
+REDIS_HOST_CUSTOM = redis
+REDIS_PORT_CUSTOM = 6379
+REDIS_PASSWORD = your_redis_password
+SERVER_PORT = 3003
+```
+
+### NestJS 서버 배포 (기본)
+```bash
+docker-compose up -d --build
+```
+
+### Rust 서버 배포
+```bash
+SERVER_BUILD_PATH=./chat_server_rust docker-compose up -d --build
+```
 
 ## WebSocket 이벤트
 
@@ -130,6 +158,27 @@ interface ChatMessage {
 
 ## 주의사항
 
--   모든 WebSocket 통신은 인증된 사용자만 가능합니다.
--   메시지 전송 시 항상 `type`과 `content`를 올바르게 지정해야 합니다.
--   이미지 메시지의 경우, `content` 배열에 이미지 URL을 포함해야 합니다.
+- 모든 WebSocket 통신은 인증된 사용자만 가능합니다.
+- 메시지 전송 시 항상 `type`과 `content`를 올바르게 지정해야 합니다.
+- 이미지 메시지의 경우, `content` 배열에 이미지 URL을 포함해야 합니다.
+
+## 프로젝트 구조
+
+```
+chat_server_lite/
+├── src/                    # NestJS 소스
+├── chat_server_rust/       # Rust 서버 소스
+├── docker-compose.yml      # Docker 배포 설정
+├── Dockerfile              # NestJS Dockerfile
+├── nginx/                  # Nginx 설정
+└── certbot/                # SSL 인증서
+```
+
+## 서버 비교
+
+| 항목 | NestJS | Rust |
+|------|--------|------|
+| 언어 | TypeScript | Rust |
+| 프레임워크 | NestJS + Socket.IO | Axum + socketioxide |
+| 성능 | 기준 | ~50% 빠름 |
+| 메모리 | ~200-500MB | ~20-50MB |

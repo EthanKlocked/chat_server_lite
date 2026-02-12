@@ -16,7 +16,6 @@ WORKDIR /app
 
 COPY --from=build /app/dist ./dist
 COPY package*.json ./
-COPY .env.prod ./
 
 # Install only production dependencies
 RUN npm ci --only=production
